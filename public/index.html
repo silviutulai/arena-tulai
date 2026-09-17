@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#070812" />
+  <title>Arena Tulai</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="stage">
+    <div class="energy energy-a"></div><div class="energy energy-b"></div>
+    <section class="game-shell">
+      <header class="brand">
+        <div class="brand-kicker">QUIZ LIVE • CHAT A B C D</div>
+        <h1>ARENA <span>TULAI</span></h1>
+        <div class="brand-sub">CINE ESTE CEL MAI TARE?</div>
+      </header>
+
+      <section class="podium" aria-label="Top 3">
+        <div class="podium-title"><span>🏆</span> TOP 3 ARENA</div>
+        <div id="top3" class="top3"></div>
+      </section>
+
+      <section class="roundbar">
+        <div><b id="round">RUNDA 0</b><span id="category">Pregătește-te</span></div>
+        <div class="timer" id="timer"><span id="time">--</span></div>
+      </section>
+
+      <section class="question-card" id="questionCard">
+        <div class="chips"><span id="difficulty" class="chip">LOBBY</span><span class="chip neon">70% CREIER • 30% GIFT POWER</span></div>
+        <h2 id="question">Scrie <b>A, B, C sau D</b> în chat când începe runda.</h2>
+        <div id="answers" class="answers">
+          <div class="answer"><b>A</b><span>Răspuns</span></div>
+          <div class="answer"><b>B</b><span>Răspuns</span></div>
+          <div class="answer"><b>C</b><span>Răspuns</span></div>
+          <div class="answer"><b>D</b><span>Răspuns</span></div>
+        </div>
+        <div id="reveal" class="reveal hidden"></div>
+      </section>
+
+      <section class="feed-wrap">
+        <div class="feed-title">⚡ LIVE ARENA</div>
+        <div id="feed" class="feed"><div class="feed-row">Așteptăm prima rundă…</div></div>
+      </section>
+
+      <footer class="footer-safe">
+        <div class="cta">RĂSPUNDE ÎN CHAT: <strong>A • B • C • D</strong></div>
+        <div class="status"><span id="dot" class="dot"></span><span id="status">DEMO MODE</span></div>
+      </footer>
+    </section>
+
+    <div id="giftBurst" class="gift-burst hidden"><span>🎁</span><b id="giftUser"></b><em id="giftText"></em></div>
+  </main>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
