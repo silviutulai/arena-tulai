@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Arena Tulai - quiz interactiv 9:16 pentru TikTok LIVE, cu A/B/C/D, leaderboard si gift boost.",
   "type": "module",
-  "main": "server.js",
+  "main": "server2.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "start": "node server2.js",
+    "dev": "node --watch server2.js"
   },
   "engines": {
     "node": ">=22"
