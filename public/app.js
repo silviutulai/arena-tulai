@@ -44,7 +44,13 @@ function renderFeed(events=[]){
 function renderStatus(s){
   const st=s.tiktokStatus||'demo';
   els.dot.className='dot '+(st.startsWith('live')?'live':st==='error'?'error':'');
-  els.status.textContent=st.startsWith('live')?`TIKTOK LIVE @${s.tiktokUsername}`:st==='demo'?'DEMO MODE • CONECTEAZĂ USERNAME':'TIKTOK '+st.toUpperCase();
+  if(st.startsWith('live')) els.status.textContent=`TIKTOK LIVE @${s.tiktokUsername}`;
+  else if(st==='demo') els.status.textContent='DEMO MODE • CONECTEAZĂ USERNAME';
+  else if(st==='waiting-live') els.status.textContent=`AȘTEPT LIVE @${s.tiktokUsername} • RETRY AUTOMAT`;
+  else if(st==='retrying') els.status.textContent='TIKTOK • REÎNCERC CONECTAREA';
+  else if(st==='connecting') els.status.textContent='TIKTOK • CONECTARE...';
+  else if(st==='disconnected') els.status.textContent='TIKTOK • RECONECTARE...';
+  else els.status.textContent='TIKTOK '+st.toUpperCase();
 }
 function render(s){
   currentState=s; clockOffset=Date.now()-s.serverNow; renderTop3(s.top3); renderQuestion(s); renderFeed(s.lastEvents); renderStatus(s);
