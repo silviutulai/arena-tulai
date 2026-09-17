@@ -15,6 +15,7 @@ const AUTO_ADVANCE = String(process.env.AUTO_ADVANCE || 'true').toLowerCase() !=
 const DEFAULT_SECONDS = Number(process.env.QUESTION_SECONDS || 25);
 const REVEAL_SECONDS = Number(process.env.REVEAL_SECONDS || 7);
 const GIFT_POINT_RATE = Number(process.env.GIFT_POINT_RATE || 0.35);
+const TIKTOK_RETRY_MS = Number(process.env.TIKTOK_RETRY_MS || 15000);
 const ANSWER_MAX = 70;
 const GIFT_MAX_PER_ROUND = 30;
 
@@ -30,12 +31,15 @@ app.get('/control', (_, res) => res.sendFile(join(__dirname, 'public', 'control.
 const players = new Map();
 let roundNumber = 0;
 let currentQuestionIndex = -1;
-let phase = 'lobby'; // lobby | question | reveal
+let phase = 'lobby';
 let roundStartedAt = 0;
 let roundEndsAt = 0;
 let roundTimer = null;
 let nextTimer = null;
 let tiktokStatus = TIKTOK_USERNAME ? 'connecting' : 'demo';
+let tiktokConnection = null;
+let tiktokRetryTimer = null;
+let tiktokConnecting = false;
 let usedQuestionIndexes = [];
 let roundAnswers = new Map();
 let lastEvents = [];
@@ -186,11 +190,12 @@ function scoreAnswer({ id, username, nickname, answer }) {
   emitState();
 }
 
+const giftRoundPoints = new Map();
+
 function scoreGift({ id, username, nickname, diamonds = 1, giftName = 'Gift', repeatCount = 1 }) {
   const player = getPlayer(id, username, nickname);
   const d = Math.max(1, Number(diamonds || 1)) * Math.max(1, Number(repeatCount || 1));
   player.giftDiamonds += d;
-
   const roundKey = `${roundNumber}:${player.id}`;
   const already = giftRoundPoints.get(roundKey) || 0;
   const raw = d * GIFT_POINT_RATE;
@@ -204,8 +209,6 @@ function scoreGift({ id, username, nickname, diamonds = 1, giftName = 'Gift', re
   io.emit('giftBurst', { user: player.nickname, giftName, diamonds: d, points: Math.round(add) });
   emitState();
 }
-
-const giftRoundPoints = new Map();
 
 function resetGame() {
   clearTimers();
@@ -226,7 +229,6 @@ function isAdmin(socket, key) {
 
 io.on('connection', socket => {
   socket.emit('state', state());
-
   socket.on('admin:start', ({key, index} = {}) => {
     if (!isAdmin(socket, key)) return;
     startRound(Number.isInteger(index) ? index : null);
@@ -247,14 +249,37 @@ io.on('connection', socket => {
     if (!isAdmin(socket, key)) return;
     scoreGift({ id:`demo:${username}`, username, nickname:username, diamonds, giftName });
   });
+  socket.on('admin:reconnectTikTok', ({key} = {}) => {
+    if (!isAdmin(socket, key)) return;
+    if (tiktokRetryTimer) clearTimeout(tiktokRetryTimer);
+    tiktokRetryTimer = null;
+    tiktokStatus = 'connecting';
+    emitState();
+    connectTikTok(true);
+  });
 });
 
-async function connectTikTok() {
+function scheduleTikTokRetry(reason = 'waiting') {
+  if (!TIKTOK_USERNAME || tiktokRetryTimer) return;
+  tiktokStatus = reason === 'offline' ? 'waiting-live' : 'retrying';
+  emitState();
+  console.log(`[TikTok] Retry in ${Math.round(TIKTOK_RETRY_MS / 1000)}s (${reason})`);
+  tiktokRetryTimer = setTimeout(() => {
+    tiktokRetryTimer = null;
+    connectTikTok();
+  }, TIKTOK_RETRY_MS);
+}
+
+async function connectTikTok(force = false) {
   if (!TIKTOK_USERNAME) {
     tiktokStatus = 'demo';
     emitState();
     return;
   }
+  if (tiktokConnecting && !force) return;
+  tiktokConnecting = true;
+  tiktokStatus = 'connecting';
+  emitState();
 
   try {
     const { TikTokLiveConnection, WebcastEvent } = await import('tiktok-live-connector');
@@ -262,6 +287,7 @@ async function connectTikTok() {
       processInitialData: false,
       enableExtendedGiftInfo: true
     });
+    tiktokConnection = connection;
 
     connection.on(WebcastEvent.CHAT, data => {
       const user = data.user || {};
@@ -291,24 +317,39 @@ async function connectTikTok() {
     });
 
     connection.on('disconnected', () => {
+      tiktokConnection = null;
+      tiktokConnecting = false;
       tiktokStatus = 'disconnected';
       emitState();
-      setTimeout(connectTikTok, 10000);
+      scheduleTikTokRetry('disconnected');
     });
     connection.on('error', err => {
-      tiktokStatus = 'error';
       console.error('[TikTok] error:', err?.message || err);
+      tiktokStatus = 'error';
       emitState();
     });
 
     const stateInfo = await connection.connect();
     tiktokStatus = `live:${stateInfo.roomId || 'connected'}`;
     console.log(`[TikTok] Connected @${TIKTOK_USERNAME}`);
+    if (tiktokRetryTimer) clearTimeout(tiktokRetryTimer);
+    tiktokRetryTimer = null;
     emitState();
   } catch (err) {
-    tiktokStatus = 'error';
-    console.error('[TikTok] connect failed:', err?.message || err);
-    emitState();
+    tiktokConnection = null;
+    const msg = String(err?.message || err || 'unknown error');
+    const offline = err?.name === 'UserOfflineError' || /isn't online|not currently live|offline/i.test(msg);
+    if (offline) {
+      console.log(`[TikTok] @${TIKTOK_USERNAME} not detected LIVE yet.`);
+      scheduleTikTokRetry('offline');
+    } else {
+      tiktokStatus = 'error';
+      console.error('[TikTok] connect failed:', msg);
+      emitState();
+      scheduleTikTokRetry('error');
+    }
+  } finally {
+    tiktokConnecting = false;
   }
 }
 
