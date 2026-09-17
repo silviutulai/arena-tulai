@@ -16,10 +16,9 @@ const ADMIN_KEY = process.env.ADMIN_KEY || 'arena-tulai-dev';
 const AUTO_ADVANCE = String(process.env.AUTO_ADVANCE || 'true').toLowerCase() !== 'false';
 const DEFAULT_SECONDS = Number(process.env.QUESTION_SECONDS || 25);
 const REVEAL_SECONDS = Number(process.env.REVEAL_SECONDS || 7);
-const GIFT_POINT_RATE = Number(process.env.GIFT_POINT_RATE || 0.35);
 const TIKTOK_RETRY_MS = Number(process.env.TIKTOK_RETRY_MS || 15000);
 const ANSWER_MAX = 70;
-const GIFT_MAX_PER_ROUND = 30;
+const GIFT_POINT_RATE = 1;
 
 const app = express();
 const server = http.createServer(app);
@@ -50,7 +49,7 @@ const funnyCorrect = ['BANG! CORECT 🔥','Creier în formă maximă 🧠','Ai g
 const funnyWrong = ['Aproape… dar întrebarea a câștigat 😅','A fost o capcană cu papuci 🩴','Creierul a zis „recalculăm” 😂','Data viitoare o demolăm 💥'];
 
 function getPlayer(id, username, nickname) {
-  const key = String(id || username || nickname || 'anon');
+  const key = String(id || username || nickname || `anon:${players.size + 1}`);
   if (!players.has(key)) {
     players.set(key, {
       id: key,
@@ -107,7 +106,7 @@ function state() {
     lastEvents: lastEvents.slice(0, 7),
     tiktokStatus,
     tiktokUsername: TIKTOK_USERNAME || null,
-    rules: { answerMax: ANSWER_MAX, giftMax: GIFT_MAX_PER_ROUND }
+    rules: { answerMax: ANSWER_MAX, giftRate: GIFT_POINT_RATE, giftMax: null }
   };
 }
 
@@ -192,30 +191,21 @@ function scoreAnswer({ id, username, nickname, answer }) {
   emitState();
 }
 
-const giftRoundPoints = new Map();
-
 function scoreGift({ id, username, nickname, diamonds = 1, giftName = 'Gift', repeatCount = 1 }) {
   const player = getPlayer(id, username, nickname);
   const d = Math.max(1, Number(diamonds || 1)) * Math.max(1, Number(repeatCount || 1));
+  const add = Math.round(d * GIFT_POINT_RATE);
   player.giftDiamonds += d;
-  const roundKey = `${roundNumber}:${player.id}`;
-  const already = giftRoundPoints.get(roundKey) || 0;
-  const raw = d * GIFT_POINT_RATE;
-  const add = roundNumber > 0 ? Math.max(0, Math.min(GIFT_MAX_PER_ROUND - already, raw)) : 0;
-  if (add > 0) {
-    giftRoundPoints.set(roundKey, already + add);
-    player.score += add;
-    player.gifts += add;
-  }
-  pushEvent({ type:'gift', user: player.nickname, text: `🎁 ${player.nickname}: ${giftName} • +${Math.round(add)} Gift Power` });
-  io.emit('giftBurst', { user: player.nickname, giftName, diamonds: d, points: Math.round(add) });
+  player.score += add;
+  player.gifts += add;
+  pushEvent({ type:'gift', user: player.nickname, text: `🎁 ${player.nickname}: ${giftName} • ${d} diamante = +${add} PTS` });
+  io.emit('giftBurst', { user: player.nickname, giftName, diamonds: d, points: add });
   emitState();
 }
 
 function resetGame() {
   clearTimers();
   players.clear();
-  giftRoundPoints.clear();
   roundAnswers.clear();
   lastEvents = [];
   roundNumber = 0;
@@ -272,36 +262,50 @@ function scheduleTikTokRetry(reason = 'waiting') {
   }, TIKTOK_RETRY_MS);
 }
 
+function normalizeTikTokUser(data = {}) {
+  const nested = data.user || {};
+  return {
+    id: nested.userId || data.userId || nested.uniqueId || data.uniqueId || data.msgId || `tt:${Date.now()}`,
+    username: nested.uniqueId || data.uniqueId || nested.nickname || data.nickname || 'tiktok_user',
+    nickname: nested.nickname || data.nickname || nested.uniqueId || data.uniqueId || 'TikTok user'
+  };
+}
+
 function attachTikTokHandlers(connection, WebcastEvent) {
-  connection.on(WebcastEvent.CHAT, data => {
-    const user = data.user || {};
-    const comment = String(data.comment || '').trim();
-    const match = comment.match(/^([ABCD])\b/i) || comment.match(/^([ABCD])$/i);
+  const onChat = data => {
+    const comment = String(data?.comment || '').trim();
+    const person = normalizeTikTokUser(data);
+    console.log(`[TikTok CHAT] ${person.nickname} (@${person.username}): ${comment}`);
+    const match = comment.match(/^\s*([ABCD])(?:\s|[.!?,;:🔥✅❤️💙💚💛💜])*$/iu);
     if (!match) return;
-    scoreAnswer({
-      id: user.userId || user.uniqueId,
-      username: user.uniqueId,
-      nickname: user.nickname || user.uniqueId,
-      answer: match[1]
-    });
-  });
+    console.log(`[Arena] Answer accepted: ${person.nickname} -> ${match[1].toUpperCase()}`);
+    scoreAnswer({ ...person, answer: match[1] });
+  };
 
-  connection.on(WebcastEvent.GIFT, data => {
-    const giftType = data.giftDetails?.giftType ?? data.giftType;
-    if (giftType === 1 && !data.repeatEnd) return;
-    const user = data.user || {};
+  const onGift = data => {
+    const giftType = data?.giftDetails?.giftType ?? data?.giftType;
+    if (giftType === 1 && !data?.repeatEnd) return;
+    const person = normalizeTikTokUser(data);
+    const diamonds = data?.extendedGiftInfo?.diamond_count || data?.giftDetails?.diamondCount || data?.diamondCount || data?.giftDiamondCount || 1;
+    const giftName = data?.giftDetails?.giftName || data?.extendedGiftInfo?.name || data?.giftName || 'Gift';
     scoreGift({
-      id: user.userId || user.uniqueId,
-      username: user.uniqueId,
-      nickname: user.nickname || user.uniqueId,
-      diamonds: data.extendedGiftInfo?.diamond_count || data.giftDetails?.diamondCount || data.diamondCount || 1,
-      giftName: data.giftDetails?.giftName || data.extendedGiftInfo?.name || data.giftName || 'Gift',
-      repeatCount: data.repeatCount || 1
+      ...person,
+      diamonds,
+      giftName,
+      repeatCount: data?.repeatCount || 1
     });
-  });
+  };
 
-  connection.on('disconnected', () => {
+  const chatEvent = WebcastEvent?.CHAT || 'chat';
+  const giftEvent = WebcastEvent?.GIFT || 'gift';
+  connection.on(chatEvent, onChat);
+  connection.on(giftEvent, onGift);
+  if (chatEvent !== 'chat') connection.on('chat', onChat);
+  if (giftEvent !== 'gift') connection.on('gift', onGift);
+
+  connection.on('disconnected', (code, reason) => {
     if (tiktokConnection !== connection) return;
+    console.warn(`[TikTok] disconnected code=${code ?? '?'} reason=${reason ?? '?'}`);
     tiktokConnection = null;
     tiktokConnecting = false;
     tiktokStatus = 'disconnected';
@@ -330,11 +334,10 @@ function makeTikTokConnection(TikTokLiveConnection, bypassLiveCheck = false) {
 
 async function connectWithFallback(TikTokLiveConnection, WebcastEvent) {
   const primary = makeTikTokConnection(TikTokLiveConnection, false);
-  attachTikTokHandlers(primary, WebcastEvent);
-  tiktokConnection = primary;
-
   try {
     const stateInfo = await primary.connect(TIKTOK_ROOM_ID || undefined);
+    tiktokConnection = primary;
+    attachTikTokHandlers(primary, WebcastEvent);
     return { connection: primary, stateInfo, mode: TIKTOK_ROOM_ID ? 'room-id' : 'normal' };
   } catch (err) {
     const msg = String(err?.message || err || 'unknown error');
@@ -345,12 +348,11 @@ async function connectWithFallback(TikTokLiveConnection, WebcastEvent) {
     try { await primary.disconnect(); } catch {}
 
     const bypass = makeTikTokConnection(TikTokLiveConnection, true);
-    attachTikTokHandlers(bypass, WebcastEvent);
-    tiktokConnection = bypass;
-
     const roomId = await bypass.fetchRoomId();
     console.log(`[TikTok] Bypass resolved roomId=${roomId}`);
     const stateInfo = await bypass.connect(roomId);
+    tiktokConnection = bypass;
+    attachTikTokHandlers(bypass, WebcastEvent);
     return { connection: bypass, stateInfo, mode: 'bypass' };
   }
 }
@@ -362,6 +364,13 @@ async function connectTikTok(force = false) {
     return;
   }
   if (tiktokConnecting && !force) return;
+
+  if (force && tiktokConnection) {
+    const old = tiktokConnection;
+    tiktokConnection = null;
+    try { await old.disconnect(); } catch {}
+  }
+
   tiktokConnecting = true;
   tiktokStatus = 'connecting';
   emitState();
@@ -397,5 +406,6 @@ server.listen(PORT, () => {
   console.log(`Arena Tulai: http://localhost:${PORT}`);
   console.log(`Control: http://localhost:${PORT}/control?key=${ADMIN_KEY}`);
   console.log(`[TikTok] target=@${TIKTOK_USERNAME || 'none'}${TIKTOK_ROOM_ID ? ` roomId=${TIKTOK_ROOM_ID}` : ''}${SIGN_API_KEY ? ' EulerKey=yes' : ''}`);
+  console.log('[Arena] Gifts: 100% enabled — 1 diamond = 1 point, no cap.');
   connectTikTok();
 });
