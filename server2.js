@@ -449,7 +449,11 @@ function attachTikTokHandlers(connection, WebcastEvent, ControlEvent) {
 
     const person = normalizeUser(data);
     const comment = String(data.comment || data.content || data.text || '').trim();
-    console.log(`[TikTok CHAT/${source}] ${person.nickname} (@${person.username}): ${comment}`);
+    if (!person.valid) {
+      console.log(`[TikTok CHAT/${source}] Ignored message without stable user: ${comment}`);
+      return;
+    }
+    console.log(`[TikTok CHAT/${source}] ${person.nickname} (@${person.username || person.id}): ${comment}`);
 
     const answer = extractAnswer(comment);
     if (!answer) {
@@ -463,21 +467,43 @@ function attachTikTokHandlers(connection, WebcastEvent, ControlEvent) {
 
   function handleGift(data = {}, source = 'gift') {
     if (!claim('gift', data)) return;
+    if (source !== 'event') return;
 
     const giftType = data.giftDetails?.giftType ?? data.giftType;
     if (giftType === 1 && !data.repeatEnd) return;
 
     const person = normalizeUser(data);
-    const diamonds = giftDiamondCost(data);
+    if (!person.valid) {
+      console.log('[TikTok GIFT] Ignored gift without a real user');
+      return;
+    }
+
+    const giftId = data.giftId || data.giftDetails?.giftId || data.giftDetails?.id || '';
     const giftName =
       data.giftDetails?.giftName ||
       data.extendedGiftInfo?.name ||
       data.giftName ||
-      `Gift ${data.giftId || ''}`.trim();
-    const repeatCount = data.repeatCount || 1;
+      '';
 
-    console.log(`[TikTok GIFT/${source}] ${person.nickname}: ${giftName} cost=${diamonds} x${repeatCount}`);
-    scoreGift({ ...person, diamonds, giftName, repeatCount });
+    if (!giftId && !giftName) {
+      console.log('[TikTok GIFT] Ignored non-gift payload');
+      return;
+    }
+
+    const diamonds = giftDiamondCost(data);
+    if (!Number.isFinite(diamonds) || diamonds <= 0) {
+      console.log('[TikTok GIFT] Ignored gift with invalid diamond value');
+      return;
+    }
+
+    const repeatCount = Math.max(1, Number(data.repeatCount || 1));
+    console.log(`[TikTok GIFT/${source}] ${person.nickname} (@${person.username || person.id}): ${giftName || ('Gift ' + giftId)} cost=${diamonds} x${repeatCount}`);
+    scoreGift({
+      ...person,
+      diamonds,
+      giftName: giftName || `Gift ${giftId}`,
+      repeatCount
+    });
   }
 
   connection.on(WebcastEvent.CHAT, data => handleChat(data, 'event'));
@@ -488,8 +514,6 @@ function attachTikTokHandlers(connection, WebcastEvent, ControlEvent) {
     const name = String(eventName || '');
     if (/chat/i.test(name)) {
       handleChat(decodedData || {}, `decoded:${name}`);
-    } else if (/gift/i.test(name)) {
-      handleGift(decodedData || {}, `decoded:${name}`);
     }
   });
 
