@@ -387,16 +387,17 @@ function giftDiamondCost(data = {}) {
   );
 }
 
-function scheduleTikTokRetry(reason = 'disconnected') {
+function scheduleTikTokRetry(reason = 'disconnected', delayMs = TIKTOK_RETRY_MS) {
   if (!TIKTOK_USERNAME || tiktokRetryTimer) return;
-  tiktokStatus = reason === 'offline' ? 'waiting-live' : 'retrying';
+  const safeDelay = Math.max(15000, Number(delayMs || TIKTOK_RETRY_MS));
+  tiktokStatus = reason === 'offline' ? 'waiting-live' : reason === 'rate-limit' ? 'rate-limited' : 'retrying';
   emitState();
-  console.log(`[TikTok] Retry in ${Math.round(TIKTOK_RETRY_MS / 1000)}s (${reason})`);
+  console.log(`[TikTok] Retry in ${Math.ceil(safeDelay / 1000)}s (${reason})`);
 
   tiktokRetryTimer = setTimeout(() => {
     tiktokRetryTimer = null;
     connectTikTok();
-  }, TIKTOK_RETRY_MS);
+  }, safeDelay);
 }
 
 function attachTikTokHandlers(connection, WebcastEvent, ControlEvent) {
@@ -588,6 +589,25 @@ async function connectTikTok() {
     const message = String(err?.message || err?.exception?.message || err || 'unknown error');
     console.error(`[TikTok] Connect failed: ${message}`);
     tiktokConnection = null;
+
+    const isRateLimit =
+      err?.name === 'SignatureRateLimitError' ||
+      err?.reason === 'Rate Limited' ||
+      /rate[_ -]?limit|too many connections started/i.test(message);
+
+    if (isRateLimit) {
+      const retryAfter = Number(err?.retryAfter || 0);
+      const resetTime = Number(err?.resetTime || 0);
+      const untilReset = resetTime > Date.now() ? resetTime - Date.now() + 5000 : 0;
+      const accountHourFallback = /account_hour/i.test(message) ? 65 * 60 * 1000 : 5 * 60 * 1000;
+      const cooldown = Math.max(retryAfter, untilReset, accountHourFallback);
+
+      tiktokStatus = 'rate-limited';
+      emitState();
+      console.warn(`[TikTok] Rate limit active. Cooldown ${Math.ceil(cooldown / 60000)} min before next connection attempt.`);
+      scheduleTikTokRetry('rate-limit', cooldown);
+      return;
+    }
 
     const offline = err?.name === 'UserOfflineError' || /isn't online|not currently live|offline|user_not_found/i.test(message);
     tiktokStatus = offline ? 'waiting-live' : 'error';
