@@ -183,13 +183,19 @@ function revealAnswer() {
 }
 
 function scoreAnswer({ id, username, nickname, answer }) {
-  if (phase !== 'question' || currentQuestionIndex < 0) return;
-
   const normalized = String(answer || '').trim().toUpperCase().charAt(0);
   if (!['A', 'B', 'C', 'D'].includes(normalized)) return;
 
+  if (phase !== 'question' || currentQuestionIndex < 0) {
+    console.log(`[Arena] Answer ignored (phase=${phase}): ${nickname || username || id} -> ${normalized}`);
+    return;
+  }
+
   const player = getPlayer(id, username, nickname);
-  if (roundAnswers.has(player.id)) return;
+  if (roundAnswers.has(player.id)) {
+    console.log(`[Arena] Duplicate answer ignored: ${player.nickname} -> ${normalized}`);
+    return;
+  }
 
   const q = QUESTIONS[currentQuestionIndex];
   const correct = normalized === q.correct;
@@ -223,6 +229,7 @@ function scoreAnswer({ id, username, nickname, answer }) {
   }
 
   roundAnswers.set(player.id, { answer: normalized, correct, points, at: Date.now() });
+  console.log(`[Arena] SCORED ${player.nickname}: answer=${normalized} correct=${correct} points=${points} total=${Math.round(player.score)}`);
   emitState();
 }
 
@@ -333,39 +340,117 @@ function scheduleTikTokRetry(reason = 'disconnected') {
   }, TIKTOK_RETRY_MS);
 }
 
-function attachTikTokHandlers(connection, WebcastEvent) {
-  connection.on(WebcastEvent.CHAT, data => {
+function attachTikTokHandlers(connection, WebcastEvent, ControlEvent) {
+  const seen = new Map();
+
+  function cleanupSeen() {
+    const cutoff = Date.now() - 120000;
+    for (const [key, at] of seen) {
+      if (at < cutoff) seen.delete(key);
+    }
+  }
+
+  function eventKey(type, data = {}) {
+    const common = data.common || {};
+    const hardId =
+      data.msgId || data.messageId || data.id ||
+      common.msgId || common.messageId || common.id ||
+      data.logId || common.logId;
+    if (hardId) return `${type}:id:${String(hardId)}`;
+
     const person = normalizeUser(data);
-    const comment = String(data.comment || '').trim();
-    console.log(`[TikTok CHAT] ${person.nickname} (@${person.username}): ${comment}`);
+    const text = String(data.comment || data.content || data.text || '');
+    const giftId = data.giftId || data.giftDetails?.giftId || data.giftDetails?.id || '';
+    const repeat = data.repeatCount || '';
+    const ts = data.createTime || common.createTime || data.timestamp || common.timestamp || '';
+    return `${type}:${person.id}:${text}:${giftId}:${repeat}:${ts}`;
+  }
 
-    const match = comment.match(/^\s*([ABCD])(?:\s|[.!?,;:🔥✅❤️💙💚💛💜])*$/iu);
-    if (!match) return;
+  function claim(type, data) {
+    cleanupSeen();
+    const key = eventKey(type, data);
+    if (seen.has(key)) return false;
+    seen.set(key, Date.now());
+    return true;
+  }
 
-    const answer = match[1].toUpperCase();
+  function extractAnswer(raw) {
+    const clean = String(raw || '')
+      .normalize('NFKC')
+      .replace(/[\u200B-\u200D\uFEFF\uFE0F]/g, '')
+      .trim()
+      .toUpperCase();
+
+    const match = clean.match(/^([ABCD])(?:\s|[^A-Z0-9])*$/u);
+    return match ? match[1] : null;
+  }
+
+  function handleChat(data = {}, source = 'chat') {
+    if (!claim('chat', data)) return;
+
+    const person = normalizeUser(data);
+    const comment = String(data.comment || data.content || data.text || '').trim();
+    console.log(`[TikTok CHAT/${source}] ${person.nickname} (@${person.username}): ${comment}`);
+
+    const answer = extractAnswer(comment);
+    if (!answer) {
+      console.log(`[Arena] Chat seen but not A/B/C/D: "${comment}"`);
+      return;
+    }
+
     console.log(`[Arena] Answer accepted: ${person.nickname} -> ${answer}`);
     scoreAnswer({ ...person, answer });
-  });
+  }
 
-  connection.on(WebcastEvent.GIFT, data => {
+  function handleGift(data = {}, source = 'gift') {
+    if (!claim('gift', data)) return;
+
     const giftType = data.giftDetails?.giftType ?? data.giftType;
     if (giftType === 1 && !data.repeatEnd) return;
 
     const person = normalizeUser(data);
     const diamonds = giftDiamondCost(data);
-    const giftName = data.giftDetails?.giftName || data.extendedGiftInfo?.name || data.giftName || `Gift ${data.giftId || ''}`.trim();
+    const giftName =
+      data.giftDetails?.giftName ||
+      data.extendedGiftInfo?.name ||
+      data.giftName ||
+      `Gift ${data.giftId || ''}`.trim();
     const repeatCount = data.repeatCount || 1;
 
-    console.log(`[TikTok GIFT] ${person.nickname}: ${giftName} cost=${diamonds} x${repeatCount}`);
+    console.log(`[TikTok GIFT/${source}] ${person.nickname}: ${giftName} cost=${diamonds} x${repeatCount}`);
     scoreGift({ ...person, diamonds, giftName, repeatCount });
+  }
+
+  connection.on(WebcastEvent.CHAT, data => handleChat(data, 'event'));
+  connection.on(WebcastEvent.GIFT, data => handleGift(data, 'event'));
+
+  const decodedEvent = ControlEvent?.DECODED_DATA || 'decodedData';
+  connection.on(decodedEvent, (eventName, decodedData) => {
+    const name = String(eventName || '');
+    if (/chat/i.test(name)) {
+      handleChat(decodedData || {}, `decoded:${name}`);
+    } else if (/gift/i.test(name)) {
+      handleGift(decodedData || {}, `decoded:${name}`);
+    }
   });
 
-  connection.on('connected', stateInfo => {
+  let websocketPackets = 0;
+  const wsDataEvent = ControlEvent?.WEBSOCKET_DATA || 'websocketData';
+  connection.on(wsDataEvent, () => {
+    websocketPackets += 1;
+    if (websocketPackets === 1 || websocketPackets % 50 === 0) {
+      console.log(`[TikTok] WebSocket packets received: ${websocketPackets}`);
+    }
+  });
+
+  connection.on(ControlEvent?.CONNECTED || 'connected', stateInfo => {
     console.log(`[TikTok] WebSocket connected roomId=${stateInfo?.roomId || connection.roomId || '?'}`);
   });
 
-  connection.on('disconnected', (code, reason) => {
+  connection.on(ControlEvent?.DISCONNECTED || 'disconnected', payload => {
     if (tiktokConnection !== connection) return;
+    const code = payload?.code;
+    const reason = payload?.reason;
     console.warn(`[TikTok] Disconnected code=${code ?? '?'} reason=${reason ?? '?'}`);
     tiktokConnection = null;
     tiktokConnecting = false;
@@ -374,7 +459,7 @@ function attachTikTokHandlers(connection, WebcastEvent) {
     scheduleTikTokRetry('disconnected');
   });
 
-  connection.on('error', err => {
+  connection.on(ControlEvent?.ERROR || 'error', err => {
     const info = err?.info || err?.message || String(err || 'unknown');
     const exception = err?.exception?.message || err?.exception || '';
     console.error(`[TikTok] Error: ${info}`, exception);
@@ -394,7 +479,7 @@ async function connectTikTok() {
   emitState();
 
   try {
-    const { TikTokLiveConnection, WebcastEvent } = await import('tiktok-live-connector');
+    const { TikTokLiveConnection, WebcastEvent, ControlEvent } = await import('tiktok-live-connector');
     const options = {
       processInitialData: false,
       fetchRoomInfoOnConnect: false,
@@ -404,7 +489,7 @@ async function connectTikTok() {
 
     const connection = new TikTokLiveConnection(TIKTOK_USERNAME, options);
     tiktokConnection = connection;
-    attachTikTokHandlers(connection, WebcastEvent);
+    attachTikTokHandlers(connection, WebcastEvent, ControlEvent);
 
     const roomId = await connection.fetchRoomId();
     console.log(`[TikTok] Resolved @${TIKTOK_USERNAME} -> roomId=${roomId}`);
