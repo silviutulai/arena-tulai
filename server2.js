@@ -213,6 +213,10 @@ function scoreAnswer({ id, username, nickname, answer }) {
   }
 
   const player = getPlayer(id, username, nickname);
+  if (!player) {
+    console.log('[Arena] Answer ignored: no stable TikTok identity');
+    return;
+  }
   if (roundAnswers.has(player.id)) {
     console.log(`[Arena] Duplicate answer ignored: ${player.nickname} -> ${normalized}`);
     return;
@@ -256,6 +260,10 @@ function scoreAnswer({ id, username, nickname, answer }) {
 
 function scoreGift({ id, username, nickname, diamonds = 1, giftName = 'Gift', repeatCount = 1 }) {
   const player = getPlayer(id, username, nickname);
+  if (!player) {
+    console.log('[Arena] Gift ignored: no stable TikTok identity');
+    return;
+  }
   const costPerGift = Math.max(1, Number(diamonds || 1));
   const count = Math.max(1, Number(repeatCount || 1));
   const totalDiamonds = Math.round(costPerGift * count);
@@ -281,6 +289,7 @@ function scoreGift({ id, username, nickname, diamonds = 1, giftName = 'Gift', re
 function resetGame() {
   clearRoundTimers();
   players.clear();
+  playerAliases.clear();
   roundAnswers.clear();
   lastEvents = [];
   roundNumber = 0;
@@ -329,11 +338,40 @@ io.on('connection', socket => {
 });
 
 function normalizeUser(data = {}) {
-  const user = data.user || {};
+  const nested = [
+    data.user, data.userInfo, data.user_info,
+    data.userDetails, data.user_details,
+    data.sender, data.author
+  ].filter(Boolean);
+
+  const user = nested.find(x =>
+    x.userId || x.user_id || x.id || x.uniqueId || x.unique_id || x.secUid || x.sec_uid
+  ) || nested[0] || {};
+
+  const id =
+    user.userId || user.user_id || user.id ||
+    data.userId || data.user_id ||
+    user.secUid || user.sec_uid ||
+    data.secUid || data.sec_uid || '';
+
+  const username =
+    user.uniqueId || user.unique_id ||
+    data.uniqueId || data.unique_id ||
+    user.username || data.username || '';
+
+  const nickname =
+    user.nickname || user.nickName || user.displayName ||
+    data.nickname || data.nickName || data.displayName ||
+    username || '';
+
+  const stableId = idKey(id);
+  const stableUsername = usernameKey(username);
+
   return {
-    id: user.userId || data.userId || user.uniqueId || data.uniqueId || data.msgId || `tt:${Date.now()}`,
-    username: user.uniqueId || data.uniqueId || user.nickname || data.nickname || 'tiktok_user',
-    nickname: user.nickname || data.nickname || user.uniqueId || data.uniqueId || 'TikTok user'
+    id: stableId,
+    username: stableUsername ? cleanIdentity(username) : '',
+    nickname: cleanIdentity(nickname) || (stableUsername ? cleanIdentity(username) : ''),
+    valid: Boolean(stableId || stableUsername)
   };
 }
 
