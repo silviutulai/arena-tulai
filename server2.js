@@ -28,6 +28,7 @@ app.get('/health', (_, res) => res.json({ ok: true, game: 'Arena Tulai', tiktokS
 app.get('/control', (_, res) => res.sendFile(join(__dirname, 'public', 'control.html')));
 
 const players = new Map();
+const playerAliases = new Map();
 let roundNumber = 0;
 let currentQuestionIndex = -1;
 let phase = 'lobby';
@@ -58,25 +59,45 @@ const funnyWrong = [
   'Data viitoare o demolăm 💥'
 ];
 
+function cleanIdentity(value) {
+  return String(value ?? '').normalize('NFKC').trim().replace(/^@/, '');
+}
+
+function usernameKey(value) {
+  const v = cleanIdentity(value).toLowerCase();
+  return (!v || v === 'tiktok_user' || v === 'tiktok user' || v === 'unknown') ? '' : v;
+}
+
+function idKey(value) {
+  const v = cleanIdentity(value);
+  return (!v || v === '0' || v === 'undefined' || v === 'null') ? '' : v;
+}
+
 function getPlayer(id, username, nickname) {
-  const key = String(id || username || nickname || `anon:${players.size + 1}`);
+  const u = usernameKey(username);
+  const uid = idKey(id);
+  const aliases = [];
+  if (u) aliases.push('u:' + u);
+  if (uid) aliases.push('id:' + uid);
+
+  let key = aliases.map(alias => playerAliases.get(alias)).find(k => k && players.has(k));
+  if (!key) key = u ? 'u:' + u : uid ? 'id:' + uid : '';
+  if (!key) return null;
+
   if (!players.has(key)) {
     players.set(key, {
       id: key,
-      username: username || nickname || `player_${players.size + 1}`,
-      nickname: nickname || username || `Player ${players.size + 1}`,
-      score: 0,
-      knowledge: 0,
-      gifts: 0,
-      giftDiamonds: 0,
-      correct: 0,
-      attempts: 0,
-      streak: 0
+      username: cleanIdentity(username),
+      nickname: cleanIdentity(nickname) || cleanIdentity(username) || 'TikTok user',
+      score: 0, knowledge: 0, gifts: 0, giftDiamonds: 0,
+      correct: 0, attempts: 0, streak: 0
     });
   }
+
   const player = players.get(key);
-  if (username) player.username = username;
-  if (nickname) player.nickname = nickname;
+  for (const alias of aliases) playerAliases.set(alias, key);
+  if (cleanIdentity(username)) player.username = cleanIdentity(username);
+  if (cleanIdentity(nickname)) player.nickname = cleanIdentity(nickname);
   return player;
 }
 
