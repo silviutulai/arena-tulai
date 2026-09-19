@@ -3,7 +3,7 @@ services:
     name: arena-tulai
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm install && npm run verify
     startCommand: npm start
     healthCheckPath: /health
     envVars:
