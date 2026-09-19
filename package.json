@@ -6,14 +6,15 @@
   "main": "server2.js",
   "scripts": {
     "start": "node server2.js",
-    "dev": "node --watch server2.js"
+    "dev": "node --watch server2.js",
+    "verify": "node --check server2.js && node --check data/questions.js && node -e \"import('tiktok-live-connector').then(m=>{if(!m.TikTokLiveConnection||!m.WebcastEvent||!m.ControlEvent)process.exit(1)})\""
   },
   "engines": {
     "node": ">=22"
   },
   "dependencies": {
-    "express": "^5.1.0",
-    "socket.io": "^4.8.1",
-    "tiktok-live-connector": "^2.5.0"
+    "express": "5.1.0",
+    "socket.io": "4.8.1",
+    "tiktok-live-connector": "2.5.0"
   }
 }
