@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { QUESTIONS } from './data/questions.js';
+import { gradeAnswer, FIRST_CORRECT_POINTS, ANSWER_WINDOW_MS, POINTS_LOST_PER_SECOND } from './lib/round-scoring.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,7 +17,7 @@ const AUTO_ADVANCE = String(process.env.AUTO_ADVANCE || 'true').toLowerCase() !=
 const QUESTION_SECONDS = Number(process.env.QUESTION_SECONDS || 25);
 const REVEAL_SECONDS = Number(process.env.REVEAL_SECONDS || 7);
 const TIKTOK_RETRY_MS = Number(process.env.TIKTOK_RETRY_MS || 15000);
-const ANSWER_MAX = 70;
+const ANSWER_MAX = FIRST_CORRECT_POINTS;
 
 const app = express();
 const server = http.createServer(app);
@@ -37,6 +38,7 @@ let roundEndsAt = 0;
 let roundTimer = null;
 let nextTimer = null;
 let roundAnswers = new Map();
+let firstCorrectAt = null;
 let usedQuestionIndexes = [];
 let lastEvents = [];
 
@@ -142,7 +144,7 @@ function state() {
     lastEvents: lastEvents.slice(0, 7),
     tiktokStatus,
     tiktokUsername: TIKTOK_USERNAME || null,
-    rules: { answerMax: ANSWER_MAX, giftRate: 1, giftMax: null }
+    rules: { answerMax: ANSWER_MAX, answerWindowSeconds: ANSWER_WINDOW_MS / 1000, answerLossPerSecond: POINTS_LOST_PER_SECOND, giftRate: 1, giftMax: null }
   };
 }
 
@@ -177,6 +179,7 @@ function startRound(forceIndex = null) {
   currentQuestionIndex = Number.isInteger(forceIndex) ? forceIndex : pickNextQuestion();
   phase = 'question';
   roundAnswers = new Map();
+  firstCorrectAt = null;
 
   const q = QUESTIONS[currentQuestionIndex];
   const seconds = q.seconds || QUESTION_SECONDS;
@@ -224,15 +227,21 @@ function scoreAnswer({ id, username, nickname, answer }) {
 
   const q = QUESTIONS[currentQuestionIndex];
   const correct = normalized === q.correct;
+  const answeredAt = Date.now();
   player.attempts += 1;
 
-  let points = 0;
+  const award = gradeAnswer({ correct, answeredAt, firstCorrectAt });
+  const points = award.points;
   if (correct) {
-    const totalMs = Math.max(1, (q.seconds || QUESTION_SECONDS) * 1000);
-    const elapsed = Math.max(0, Date.now() - roundStartedAt);
-    const timeRatio = Math.max(0, Math.min(1, 1 - elapsed / totalMs));
-    const floor = { 'ușor': 0.56, 'mediu': 0.64, 'greu': 0.72, 'expert': 0.80 }[q.difficulty] || 0.62;
-    points = Math.round(ANSWER_MAX * (floor + (1 - floor) * timeRatio));
+    firstCorrectAt = award.firstCorrectAt;
+
+    // Dacă primul răspuns corect vine la finalul întrebării, restul au
+    // totuși fereastra completă de 5 secunde înainte de afișarea soluției.
+    if (award.isFirst && answeredAt + ANSWER_WINDOW_MS > roundEndsAt) {
+      roundEndsAt = answeredAt + ANSWER_WINDOW_MS;
+      if (roundTimer) clearTimeout(roundTimer);
+      roundTimer = setTimeout(revealAnswer, Math.max(0, roundEndsAt - Date.now()));
+    }
 
     player.score += points;
     player.knowledge += points;
@@ -242,7 +251,7 @@ function scoreAnswer({ id, username, nickname, answer }) {
     pushEvent({
       type: 'correct',
       user: player.nickname,
-      text: `${player.nickname}: ${normalized} +${points} • ${funnyCorrect[Math.floor(Math.random() * funnyCorrect.length)]}`
+      text: points > 0 ? `${player.nickname}: ${normalized} +${points} • ${funnyCorrect[Math.floor(Math.random() * funnyCorrect.length)]}` : `${player.nickname}: ${normalized} CORECT, dar după 5 secunde • +0 PTS`
     });
   } else {
     player.streak = 0;
@@ -253,7 +262,7 @@ function scoreAnswer({ id, username, nickname, answer }) {
     });
   }
 
-  roundAnswers.set(player.id, { answer: normalized, correct, points, at: Date.now() });
+  roundAnswers.set(player.id, { answer: normalized, correct, points, at: answeredAt });
   console.log(`[Arena] SCORED ${player.nickname}: answer=${normalized} correct=${correct} points=${points} total=${Math.round(player.score)}`);
   emitState();
 }
@@ -291,6 +300,7 @@ function resetGame() {
   players.clear();
   playerAliases.clear();
   roundAnswers.clear();
+  firstCorrectAt = null;
   lastEvents = [];
   roundNumber = 0;
   currentQuestionIndex = -1;
