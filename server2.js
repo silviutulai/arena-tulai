@@ -81,24 +81,63 @@ function getPlayer(id, username, nickname) {
   const aliases = [];
   if (u) aliases.push('u:' + u);
   if (uid) aliases.push('id:' + uid);
+  if (!aliases.length) return null;
 
-  let key = aliases.map(alias => playerAliases.get(alias)).find(k => k && players.has(k));
-  if (!key) key = u ? 'u:' + u : uid ? 'id:' + uid : '';
-  if (!key) return null;
+  // Chat and gifts may give username only, numeric ID only, or both.
+  // When the two aliases finally meet, keep ONE row and merge their totals.
+  const keys = [...new Set(aliases.map(alias => playerAliases.get(alias)).filter(key => key && players.has(key)))];
+  const key = keys.find(k => roundAnswers.has(k)) || keys[0] || (u ? 'u:' + u : 'id:' + uid);
 
   if (!players.has(key)) {
     players.set(key, {
       id: key,
-      username: cleanIdentity(username),
-      nickname: cleanIdentity(nickname) || cleanIdentity(username) || 'TikTok user',
+      username: u ? cleanIdentity(username) : '',
+      nickname: cleanIdentity(nickname) || (u ? cleanIdentity(username) : '') || 'TikTok user',
       score: 0, knowledge: 0, gifts: 0, giftDiamonds: 0,
       correct: 0, attempts: 0, streak: 0
     });
   }
 
   const player = players.get(key);
+  for (const otherKey of keys) {
+    if (otherKey === key) continue;
+    const other = players.get(otherKey);
+    if (!other) continue;
+
+    player.score += other.score;
+    player.knowledge += other.knowledge;
+    player.gifts += other.gifts;
+    player.giftDiamonds += other.giftDiamonds;
+    player.correct += other.correct;
+    player.attempts += other.attempts;
+    player.streak = Math.max(player.streak, other.streak);
+    if (!player.username && other.username) player.username = other.username;
+    if (!player.nickname && other.nickname) player.nickname = other.nickname;
+
+    const currentAnswer = roundAnswers.get(key);
+    const otherAnswer = roundAnswers.get(otherKey);
+    if (currentAnswer && otherAnswer) {
+      // Both aliases answered this same round before TikTok linked them.
+      // Keep the earlier answer and refund the later duplicate score.
+      const keep = currentAnswer.at <= otherAnswer.at ? currentAnswer : otherAnswer;
+      const discard = keep === currentAnswer ? otherAnswer : currentAnswer;
+      player.score -= discard.points;
+      player.knowledge -= discard.points;
+      player.correct -= discard.correct ? 1 : 0;
+      player.attempts -= 1;
+      roundAnswers.set(key, keep);
+    } else if (otherAnswer) {
+      roundAnswers.set(key, otherAnswer);
+    }
+    roundAnswers.delete(otherKey);
+    players.delete(otherKey);
+    for (const [alias, value] of playerAliases) {
+      if (value === otherKey) playerAliases.set(alias, key);
+    }
+  }
+
   for (const alias of aliases) playerAliases.set(alias, key);
-  if (cleanIdentity(username)) player.username = cleanIdentity(username);
+  if (u) player.username = cleanIdentity(username);
   if (cleanIdentity(nickname)) player.nickname = cleanIdentity(nickname);
   return player;
 }
@@ -455,24 +494,47 @@ function attachTikTokHandlers(connection, WebcastEvent, ControlEvent) {
     return match ? match[1] : null;
   }
 
-  function handleChat(data = {}, source = 'chat') {
-    if (!claim('chat', data)) return;
+  const seenChat = new Map();
 
+  function handleChat(data = {}, source = 'chat') {
     const person = normalizeUser(data);
     const comment = String(data.comment || data.content || data.text || '').trim();
-    if (!person.valid) {
-      console.log(`[TikTok CHAT/${source}] Ignored message without stable user: ${comment}`);
-      return;
-    }
-    console.log(`[TikTok CHAT/${source}] ${person.nickname} (@${person.username || person.id}): ${comment}`);
-
     const answer = extractAnswer(comment);
-    if (!answer) {
-      console.log(`[Arena] Chat seen but not A/B/C/D: "${comment}"`);
+
+    if (!answer) return;
+    if (!person.valid) {
+      console.log(`[TikTok CHAT/${source}] Answer ignored: missing TikTok ID/username (${comment})`);
+      return;
+    }
+    if (phase !== 'question') {
+      console.log(`[TikTok CHAT/${source}] ${person.nickname}: ${answer} ignored (phase=${phase})`);
       return;
     }
 
-    console.log(`[Arena] Answer accepted: ${person.nickname} -> ${answer}`);
+    // Only genuine MESSAGE IDs are used across rounds. Without a message ID,
+    // roundAnswers (one answer per player per round) removes duplicates instead.
+    // In particular, another "A" in a later round must NOT be dropped.
+    const common = data.common || {};
+    const messageId = data.msgId || data.messageId || common.msgId ||
+      common.messageId || common.id || data.logId || '';
+    if (messageId) {
+      const now = Date.now();
+      for (const [id, entry] of seenChat) {
+        if (now - entry.at > 120000) seenChat.delete(id);
+      }
+
+      const msgKey = String(messageId);
+      const previous = seenChat.get(msgKey);
+      if (previous) {
+        // The decoded fallback can carry only an ID while the normal CHAT
+        // supplies the username. Link both even for a duplicate delivery.
+        getPlayer(previous.id || person.id, person.username || previous.username, person.nickname);
+        return;
+      }
+      seenChat.set(msgKey, { at: now, id: person.id, username: person.username });
+    }
+
+    console.log(`[TikTok CHAT/${source}] ${person.nickname} (@${person.username || person.id}): ${answer}`);
     scoreAnswer({ ...person, answer });
   }
 
@@ -523,9 +585,12 @@ function attachTikTokHandlers(connection, WebcastEvent, ControlEvent) {
   const decodedEvent = ControlEvent?.DECODED_DATA || 'decodedData';
   connection.on(decodedEvent, (eventName, decodedData) => {
     const name = String(eventName || '');
-    if (/chat/i.test(name)) {
-      handleChat(decodedData || {}, `decoded:${name}`);
-    }
+    if (name !== 'WebcastChatMessage' && name !== 'chat') return;
+    const data = decodedData || {};
+    if (!extractAnswer(data.comment || data.content || data.text)) return;
+    // The normal CHAT event arrives from the same decoded packet.
+    // Give it priority; use raw decoding only when CHAT did not process it.
+    setTimeout(() => handleChat(data, `decoded:${name}`), 80);
   });
 
   let websocketPackets = 0;
