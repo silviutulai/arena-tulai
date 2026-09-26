@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { QUESTIONS } from './data/questions.js';
 import { gradeAnswer, FIRST_CORRECT_POINTS, ANSWER_WINDOW_MS, POINTS_LOST_PER_SECOND } from './lib/round-scoring.js';
+import { POINTS_GOAL, LIKES_GOAL, BOOST_THRESHOLD, quizMultiplier, communityScore, createLikeTracker } from './lib/live-goals.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -41,6 +42,7 @@ let roundAnswers = new Map();
 let firstCorrectAt = null;
 let usedQuestionIndexes = [];
 let lastEvents = [];
+const likeTracker = createLikeTracker();
 
 let tiktokStatus = TIKTOK_USERNAME ? 'connecting' : 'demo';
 let tiktokConnection = null;
@@ -148,6 +150,7 @@ function topPlayers(limit = 10) {
     .slice(0, limit)
     .map((p, i) => ({
       ...p,
+      boosted: p.score > BOOST_THRESHOLD,
       rank: i + 1,
       score: Math.round(p.score),
       knowledge: Math.round(p.knowledge),
@@ -165,6 +168,7 @@ function publicQuestion() {
     category: q.category,
     difficulty: q.difficulty,
     seconds: q.seconds || QUESTION_SECONDS,
+    visual: q.visual || null,
     correct: phase === 'reveal' ? q.correct : null
   };
 }
@@ -183,7 +187,8 @@ function state() {
     lastEvents: lastEvents.slice(0, 7),
     tiktokStatus,
     tiktokUsername: TIKTOK_USERNAME || null,
-    rules: { answerMax: ANSWER_MAX, answerWindowSeconds: ANSWER_WINDOW_MS / 1000, answerLossPerSecond: POINTS_LOST_PER_SECOND, giftRate: 1, giftMax: null }
+    goals: { points: { current: communityScore(players), target: POINTS_GOAL }, likes: { current: likeTracker.total, target: LIKES_GOAL } },
+    rules: { answerMax: ANSWER_MAX, boostThreshold: BOOST_THRESHOLD, quizBoostMultiplier: 2, answerWindowSeconds: ANSWER_WINDOW_MS / 1000, answerLossPerSecond: POINTS_LOST_PER_SECOND, giftRate: 1, giftMax: null }
   };
 }
 
@@ -270,7 +275,8 @@ function scoreAnswer({ id, username, nickname, answer }) {
   player.attempts += 1;
 
   const award = gradeAnswer({ correct, answeredAt, firstCorrectAt });
-  const points = award.points;
+  const multiplier = quizMultiplier(player.score);
+  const points = award.points * multiplier;
   if (correct) {
     firstCorrectAt = award.firstCorrectAt;
 
@@ -286,11 +292,14 @@ function scoreAnswer({ id, username, nickname, answer }) {
     player.knowledge += points;
     player.correct += 1;
     player.streak += 1;
+    if (player.score > BOOST_THRESHOLD && player.score - points <= BOOST_THRESHOLD) {
+      pushEvent({ type: 'boost', user: player.nickname, text: `⚡ ${player.nickname} a depășit 500 PTS! BONUS x2 la următoarele răspunsuri!` });
+    }
 
     pushEvent({
       type: 'correct',
       user: player.nickname,
-      text: points > 0 ? `${player.nickname}: ${normalized} +${points} • ${funnyCorrect[Math.floor(Math.random() * funnyCorrect.length)]}` : `${player.nickname}: ${normalized} CORECT, dar după 5 secunde • +0 PTS`
+      text: points > 0 ? `${player.nickname}: ${normalized} +${points}${multiplier === 2 ? ' ⚡x2' : ''} • ${funnyCorrect[Math.floor(Math.random() * funnyCorrect.length)]}` : `${player.nickname}: ${normalized} CORECT, dar după 5 secunde • +0 PTS`
     });
   } else {
     player.streak = 0;
@@ -315,10 +324,14 @@ function scoreGift({ id, username, nickname, diamonds = 1, giftName = 'Gift', re
   const costPerGift = Math.max(1, Number(diamonds || 1));
   const count = Math.max(1, Number(repeatCount || 1));
   const totalDiamonds = Math.round(costPerGift * count);
+  const previousScore = player.score;
 
   player.giftDiamonds += totalDiamonds;
   player.gifts += totalDiamonds;
   player.score += totalDiamonds;
+  if (previousScore <= BOOST_THRESHOLD && player.score > BOOST_THRESHOLD) {
+    pushEvent({ type: 'boost', user: player.nickname, text: `⚡ ${player.nickname} a deblocat x2 pentru răspunsurile următoare!` });
+  }
 
   pushEvent({
     type: 'gift',
@@ -336,6 +349,7 @@ function scoreGift({ id, username, nickname, diamonds = 1, giftName = 'Gift', re
 
 function resetGame() {
   clearRoundTimers();
+  likeTracker.reset();
   players.clear();
   playerAliases.clear();
   roundAnswers.clear();
@@ -378,6 +392,12 @@ io.on('connection', socket => {
   socket.on('admin:demoGift', ({ key, username, diamonds, giftName } = {}) => {
     if (!isAdmin(socket, key)) return;
     scoreGift({ id: `demo:${username}`, username, nickname: username, diamonds, giftName });
+  });
+
+  socket.on('admin:demoLike', ({ key, count } = {}) => {
+    if (!isAdmin(socket, key)) return;
+    const amount = Math.max(0, Math.min(100000, Math.round(Number(count) || 0)));
+    if (amount) onTikTokLike({ likeCount: amount });
   });
 
   socket.on('admin:reconnectTikTok', ({ key } = {}) => {
@@ -434,6 +454,15 @@ function giftDiamondCost(data = {}) {
     data.giftDiamondCount ||
     1
   );
+}
+
+function onTikTokLike(data = {}) {
+  const before = likeTracker.total;
+  const added = likeTracker.observe(data);
+  if (!added) return;
+  console.log(`[TikTok LIKE] +${added} taps; total=${likeTracker.total}`);
+  if (before < LIKES_GOAL && likeTracker.total >= LIKES_GOAL) pushEvent({ type: 'goal', text: '❤️ LIVE GOAL: 100.000 TAP TAP-uri atinse!' });
+  emitState();
 }
 
 function scheduleTikTokRetry(reason = 'disconnected', delayMs = TIKTOK_RETRY_MS) {
@@ -581,6 +610,7 @@ function attachTikTokHandlers(connection, WebcastEvent, ControlEvent) {
 
   connection.on(WebcastEvent.CHAT, data => handleChat(data, 'event'));
   connection.on(WebcastEvent.GIFT, data => handleGift(data, 'event'));
+  connection.on(WebcastEvent.LIKE, data => onTikTokLike(data));
 
   const decodedEvent = ControlEvent?.DECODED_DATA || 'decodedData';
   connection.on(decodedEvent, (eventName, decodedData) => {
