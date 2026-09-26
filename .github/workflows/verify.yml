@@ -13,8 +13,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
       - name: Install dependencies
         run: npm install
+      - name: Validate self-hosted SVG illustrations
+        run: python3 -c 'import glob,xml.etree.ElementTree as ET; files=glob.glob("public/visuals/*.svg"); assert len(files)>=23, len(files); [ET.parse(f) for f in files]; print(len(files),"valid SVG files")'
       - name: Verify quiz, images, chat, gifts and LIKE goals
         run: npm run verify
