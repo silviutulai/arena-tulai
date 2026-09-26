@@ -4,12 +4,15 @@ body{font-family:Inter,system-ui,sans-serif;background:#0a0b12;color:#fff;margin
 <div class="card"><h2>Preview 9:16</h2><iframe src="/"></iframe></div>
 <div class="card"><h2>Demo răspuns</h2><div class="row"><input id="user" value="TulaiFan"><select id="answer"><option>A</option><option>B</option><option>C</option><option>D</option></select><button id="sendAnswer">Trimite</button></div></div>
 <div class="card"><h2>Demo gift</h2><div class="row"><input id="giftUser" value="SuperFan"><input id="diamonds" type="number" value="50" min="1"><input id="giftName" value="Rose"><button id="sendGift">Gift</button></div></div>
+<div class="card"><h2>❤️ Demo TAP TAP</h2><p>Simulează like-urile fără TikTok. Doar pentru test.</p><div class="row"><input id="demoLikes" type="number" min="1" max="100000" value="1000"><button id="sendLikes">Adaugă TAP TAP</button></div></div>
+<div class="card"><h2>🎯 Obiective LIVE</h2><pre id="goals">—</pre><p>2.000 PTS = total quiz + cadouri; 100K ❤️ = like-uri primite.</p><p>După ce un jucător depășește 500 PTS, următoarele răspunsuri corecte valorează x2.</p></div>
 <div class="card wide"><h2>Leaderboard</h2><pre id="leaderboard">—</pre></div>
 </div></main><script src="/socket.io/socket.io.js"></script><script>
 const key=new URLSearchParams(location.search).get('key')||''; const socket=io({auth:{key}}); let s=null;
-socket.on('state',x=>{s=x;document.querySelector('#state').textContent=`Fază: ${x.phase} | Runda: ${x.roundNumber} | TikTok: ${x.tiktokStatus}${x.tiktokUsername?' @'+x.tiktokUsername:''}`;document.querySelector('#leaderboard').textContent=x.leaderboard.map(p=>`#${p.rank} ${p.nickname} — ${p.score} pts (quiz ${p.knowledge} / gift ${p.gifts})`).join('\n')||'Niciun jucător încă.'});
+socket.on('state',x=>{s=x;document.querySelector('#state').textContent=`Fază: ${x.phase} | Runda: ${x.roundNumber} | TikTok: ${x.tiktokStatus}${x.tiktokUsername?' @'+x.tiktokUsername:''}`;document.querySelector('#leaderboard').textContent=x.leaderboard.map(p=>`#${p.rank} ${p.nickname} — ${p.score} pts (quiz ${p.knowledge} / gift ${p.gifts})${p.boosted?' ⚡ x2':''}`).join('\n')||'Niciun jucător încă.';document.querySelector('#goals').textContent=`⚡ ${x.goals?.points?.current||0} / 2000 PTS\\n❤️ ${x.goals?.likes?.current||0} / 100000 TAP TAP`});
 const send=(ev,data={})=>socket.emit(ev,{key,...data});
 document.querySelector('#start').onclick=()=>send('admin:start');document.querySelector('#reveal').onclick=()=>send('admin:reveal');document.querySelector('#reconnect').onclick=()=>send('admin:reconnectTikTok');document.querySelector('#reset').onclick=()=>confirm('Resetezi scorurile?')&&send('admin:reset');
 document.querySelector('#sendAnswer').onclick=()=>send('admin:demoAnswer',{username:document.querySelector('#user').value,answer:document.querySelector('#answer').value});
 document.querySelector('#sendGift').onclick=()=>send('admin:demoGift',{username:document.querySelector('#giftUser').value,diamonds:+document.querySelector('#diamonds').value,giftName:document.querySelector('#giftName').value});
+document.querySelector('#sendLikes').onclick=()=>send('admin:demoLike',{count:+document.querySelector('#demoLikes').value});
 </script></body></html>
