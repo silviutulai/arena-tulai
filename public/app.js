@@ -67,7 +67,7 @@ function renderQuestion(state) {
     els.question.classList.remove('long');
     els.visualTag.classList.add('hidden');
     els.visualWrap.classList.add('hidden');
-    els.questionCard.classList.remove('has-visual');
+    els.questionCard.classList.remove('has-visual', 'compact-answers');
     [...els.answers.children].forEach((el, i) => {
       el.className = 'answer';
       el.querySelector('.answer-text').textContent = 'Răspunsul ' + 'ABCD'[i];
@@ -87,6 +87,7 @@ function renderQuestion(state) {
   els.visualTag.classList.toggle('hidden', !visual);
   els.visualWrap.classList.toggle('hidden', !visual);
   els.questionCard.classList.toggle('has-visual', Boolean(visual));
+  els.questionCard.classList.toggle('compact-answers', Boolean(visual) && q.a.every(option => String(option).length <= 20));
   if (visual && displayedVisual !== visual) {
     els.visualImage.alt = 'Ilustrație pentru: ' + q.q;
     els.visualImage.src = visual;
