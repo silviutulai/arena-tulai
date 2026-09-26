@@ -1,82 +1,647 @@
+// Arena Tulai Visual: întrebări complet noi.
 export const QUESTIONS = [
-  {q:"Care număr urmează: 3, 9, 27, 81, ?", a:["162","243","324","729"], correct:"B", category:"Logică", difficulty:"ușor", seconds:24},
-  {q:"Care număr urmează: 1, 4, 9, 16, 25, ?", a:["30","32","36","49"], correct:"C", category:"Logică", difficulty:"ușor", seconds:20},
-  {q:"Care număr urmează: 2, 3, 5, 9, 17, ?", a:["25","31","33","35"], correct:"C", category:"Logică", difficulty:"greu", seconds:32},
-  {q:"Care număr urmează: 100, 96, 88, 76, 60, ?", a:["40","42","44","48"], correct:"A", category:"Logică", difficulty:"greu", seconds:32},
-  {q:"Care literă urmează: Z, X, U, Q, ?", a:["M","L","K","J"], correct:"B", category:"Logică", difficulty:"greu", seconds:34},
-  {q:"Dacă A=1, B=2, ..., Z=26, cât valorează cuvântul CAT?", a:["22","24","26","28"], correct:"B", category:"Logică", difficulty:"ușor", seconds:26},
-  {q:"Ana este mai înaltă decât Bogdan, iar Bogdan este mai înalt decât Carmen. Cine este cea mai scundă?", a:["Ana","Bogdan","Carmen","Nu se poate ști"], correct:"C", category:"Logică", difficulty:"ușor", seconds:20},
-  {q:"Trei becuri sunt controlate de trei întrerupătoare din altă cameră. Câte vizite minime în camera becurilor sunt necesare pentru a identifica toate întrerupătoarele?", a:["1","2","3","4"], correct:"A", category:"Puzzle", difficulty:"expert", seconds:45},
-  {q:"Ai 12 monede, una este falsă și poate fi mai grea sau mai ușoară. Cu o balanță, numărul minim clasic de cântăriri garantate este?", a:["2","3","4","5"], correct:"B", category:"Puzzle", difficulty:"expert", seconds:45},
-  {q:"Un tată are de 4 ori vârsta fiului. Peste 20 de ani va avea de 2 ori vârsta lui. Câți ani are fiul acum?", a:["5","10","15","20"], correct:"B", category:"Logică", difficulty:"greu", seconds:36},
-  {q:"Cât este 2^10?", a:["512","1024","2048","4096"], correct:"B", category:"Matematică", difficulty:"ușor", seconds:22},
-  {q:"Care este cel mai mic multiplu comun al numerelor 6 și 8?", a:["12","18","24","48"], correct:"C", category:"Matematică", difficulty:"greu", seconds:26},
-  {q:"Care este cel mai mare divizor comun al numerelor 84 și 126?", a:["14","21","42","63"], correct:"C", category:"Matematică", difficulty:"greu", seconds:32},
-  {q:"Cât este suma numerelor de la 1 la 100?", a:["4950","5000","5050","5100"], correct:"C", category:"Matematică", difficulty:"greu", seconds:28},
-  {q:"Dacă x + 1/x = 5, cât este x² + 1/x²?", a:["21","23","25","27"], correct:"B", category:"Matematică", difficulty:"expert", seconds:40},
-  {q:"Care este probabilitatea de a extrage un as dintr-un pachet standard de 52 de cărți?", a:["1/4","1/13","4/13","1/52"], correct:"B", category:"Matematică", difficulty:"greu", seconds:26},
-  {q:"Câte diagonale are un hexagon?", a:["6","9","12","15"], correct:"B", category:"Matematică", difficulty:"greu", seconds:32},
-  {q:"Care este suma unghiurilor interioare ale unui pentagon?", a:["360°","450°","540°","720°"], correct:"C", category:"Matematică", difficulty:"greu", seconds:28},
-  {q:"Care dintre aceste numere este irațional?", a:["0,25","√2","3/7","1,125"], correct:"B", category:"Matematică", difficulty:"greu", seconds:26},
-  {q:"Ce organit celular este cunoscut drept «centrala energetică» a celulei?", a:["Ribozomul","Mitocondria","Lizozomul","Nucleolul"], correct:"B", category:"Biologie", difficulty:"ușor", seconds:20},
-  {q:"Ce bază azotată apare în ARN în locul timinei?", a:["Adenina","Citozina","Uracilul","Guanina"], correct:"C", category:"Biologie", difficulty:"greu", seconds:24},
-  {q:"Câte perechi de cromozomi are în mod obișnuit o celulă somatică umană?", a:["22","23","24","46"], correct:"B", category:"Biologie", difficulty:"greu", seconds:24},
-  {q:"Care proteină transportă cea mai mare parte a oxigenului în sânge?", a:["Insulina","Hemoglobina","Colagenul","Keratina"], correct:"B", category:"Biologie", difficulty:"ușor", seconds:20},
-  {q:"Cum se numește procesul prin care plantele pierd apă prin frunze?", a:["Respirație","Transpirație","Fermentație","Osmoreglare"], correct:"B", category:"Biologie", difficulty:"ușor", seconds:24},
-  {q:"Ce număr atomic are carbonul?", a:["4","6","8","12"], correct:"B", category:"Chimie", difficulty:"ușor", seconds:20},
-  {q:"Ce pH are, ideal, o soluție neutră la aproximativ 25°C?", a:["0","5","7","14"], correct:"C", category:"Chimie", difficulty:"ușor", seconds:20},
-  {q:"Care gaz nobil are simbolul Ne?", a:["Neon","Azot","Nichel","Neptuniu"], correct:"A", category:"Chimie", difficulty:"ușor", seconds:18},
-  {q:"Care legătură implică în mod tipic transfer de electroni între atomi?", a:["Ionică","Covalentă","Metalică","De hidrogen"], correct:"A", category:"Chimie", difficulty:"greu", seconds:26},
-  {q:"Care este formula chimică a amoniacului?", a:["NH3","NO2","HNO3","CH4"], correct:"A", category:"Chimie", difficulty:"ușor", seconds:24},
-  {q:"Ce lege leagă tensiunea, curentul și rezistența electrică?", a:["Legea lui Boyle","Legea lui Ohm","Legea lui Hooke","Legea lui Snell"], correct:"B", category:"Fizică", difficulty:"ușor", seconds:20},
-  {q:"În ce unitate SI se măsoară energia?", a:["Newton","Joule","Pascal","Tesla"], correct:"B", category:"Fizică", difficulty:"ușor", seconds:20},
-  {q:"Ce particulă elementară mediază interacțiunea electromagnetică?", a:["Fotonul","Gluonul","Bosonul W","Neutrinul"], correct:"A", category:"Fizică", difficulty:"greu", seconds:30},
-  {q:"Care este accelerația gravitațională aproximativă la suprafața Pământului?", a:["4,9 m/s²","9,8 m/s²","19,6 m/s²","98 m/s²"], correct:"B", category:"Fizică", difficulty:"ușor", seconds:24},
-  {q:"Ce fenomen explică schimbarea aparentă a frecvenței unei sirene când se apropie și se îndepărtează?", a:["Efectul fotoelectric","Efectul Doppler","Difracția","Polarizarea"], correct:"B", category:"Fizică", difficulty:"greu", seconds:26},
-  {q:"Care planetă are cei mai evidenți inele văzute de pe Pământ?", a:["Jupiter","Saturn","Uranus","Neptun"], correct:"B", category:"Astronomie", difficulty:"ușor", seconds:20},
-  {q:"Cum se numește galaxia în care se află Sistemul Solar?", a:["Andromeda","Calea Lactee","Triangulum","Sombrero"], correct:"B", category:"Astronomie", difficulty:"ușor", seconds:18},
-  {q:"Ce tip de stea este Soarele?", a:["Gigantă roșie","Pitic alb","Stea de secvență principală tip G","Stea neutronică"], correct:"C", category:"Astronomie", difficulty:"greu", seconds:26},
-  {q:"Care este cea mai apropiată stea de Soare?", a:["Sirius","Proxima Centauri","Betelgeuse","Vega"], correct:"B", category:"Astronomie", difficulty:"greu", seconds:24},
-  {q:"Ce este un an-lumină?", a:["Unitate de timp","Unitate de distanță","Unitate de energie","Unitate de masă"], correct:"B", category:"Astronomie", difficulty:"ușor", seconds:20},
-  {q:"În ce an a căzut Zidul Berlinului?", a:["1987","1989","1991","1993"], correct:"B", category:"Istorie", difficulty:"ușor", seconds:24},
-  {q:"Cine a fost primul împărat roman?", a:["Iulius Cezar","Augustus","Nero","Traian"], correct:"B", category:"Istorie", difficulty:"greu", seconds:26},
-  {q:"În ce secol a avut loc Revoluția Franceză?", a:["Secolul XVII","Secolul XVIII","Secolul XIX","Secolul XX"], correct:"B", category:"Istorie", difficulty:"greu", seconds:24},
-  {q:"Ce civilizație a folosit scrierea cuneiformă în Mesopotamia?", a:["Sumerienii","Vikingii","Incașii","Fenicienii"], correct:"A", category:"Istorie", difficulty:"greu", seconds:30},
-  {q:"Care tratat a încheiat oficial Primul Război Mondial între Germania și Aliați?", a:["Versailles","Tordesillas","Westfalia","Utrecht"], correct:"A", category:"Istorie", difficulty:"greu", seconds:30},
-  {q:"Care este capitala Noii Zeelande?", a:["Auckland","Wellington","Christchurch","Hamilton"], correct:"B", category:"Geografie", difficulty:"greu", seconds:24},
-  {q:"Ce lanț muntos separă în mod convențional Europa de Asia în Rusia?", a:["Alpii","Carpații","Uralii","Caucazul"], correct:"C", category:"Geografie", difficulty:"greu", seconds:26},
-  {q:"Care este cel mai mare deșert cald al lumii?", a:["Gobi","Sahara","Kalahari","Atacama"], correct:"B", category:"Geografie", difficulty:"ușor", seconds:20},
-  {q:"Prin câte țări trece fluviul Dunărea sau formează granițe, în mod uzual numărate?", a:["8","10","12","14"], correct:"B", category:"Geografie", difficulty:"greu", seconds:32},
-  {q:"Care țară are capitala la Reykjavik?", a:["Norvegia","Islanda","Finlanda","Danemarca"], correct:"B", category:"Geografie", difficulty:"ușor", seconds:18},
-  {q:"În ce ocean se află insula Madagascar?", a:["Atlantic","Pacific","Indian","Arctic"], correct:"C", category:"Geografie", difficulty:"ușor", seconds:20},
-  {q:"Care este capitala Kazahstanului în 2026?", a:["Almatî","Astana","Tașkent","Baku"], correct:"B", category:"Geografie", difficulty:"greu", seconds:24},
-  {q:"Cine a scris romanul «1984»?", a:["George Orwell","Aldous Huxley","Ray Bradbury","Franz Kafka"], correct:"A", category:"Literatură", difficulty:"ușor", seconds:20},
-  {q:"Cine este autorul romanului «Crimă și pedeapsă»?", a:["Tolstoi","Dostoievski","Cehov","Turgheniev"], correct:"B", category:"Literatură", difficulty:"greu", seconds:24},
-  {q:"În ce operă apare personajul Don Quijote?", a:["Don Quijote de la Mancha","Divina Comedie","Faust","Decameronul"], correct:"A", category:"Literatură", difficulty:"ușor", seconds:20},
-  {q:"Ce figură de stil atribuie însușiri omenești unor obiecte sau fenomene?", a:["Metaforă","Personificare","Hiperbolă","Antiteză"], correct:"B", category:"Limbă", difficulty:"ușor", seconds:24},
-  {q:"Care dintre aceste cuvinte este un palindrom?", a:["capac","carte","masă","nor"], correct:"A", category:"Limbă", difficulty:"ușor", seconds:18},
-  {q:"Cine a compus Simfonia a 9-a «Din Lumea Nouă»?", a:["Mozart","Dvořák","Chopin","Vivaldi"], correct:"B", category:"Muzică", difficulty:"greu", seconds:30},
-  {q:"Câte semitonuri are o octavă în sistemul temperat occidental?", a:["8","10","12","14"], correct:"C", category:"Muzică", difficulty:"greu", seconds:24},
-  {q:"Cine a pictat «Guernica»?", a:["Picasso","Dalí","Goya","Miró"], correct:"A", category:"Artă", difficulty:"greu", seconds:24},
-  {q:"În ce oraș se află muzeul Luvru?", a:["Roma","Paris","Madrid","Viena"], correct:"B", category:"Artă", difficulty:"ușor", seconds:18},
-  {q:"Ce stil arhitectural este asociat cu arcuri frânte și contraforturi zburătoare?", a:["Romanic","Goticul","Barocul","Brutalismul"], correct:"B", category:"Artă", difficulty:"greu", seconds:30},
-  {q:"Ce înseamnă acronimul CPU în informatică?", a:["Central Processing Unit","Computer Personal Utility","Core Program User","Central Power Unit"], correct:"A", category:"Tehnologie", difficulty:"ușor", seconds:18},
-  {q:"Care structură de date funcționează după principiul LIFO?", a:["Coadă","Stivă","Arbore","Graf"], correct:"B", category:"Tehnologie", difficulty:"greu", seconds:24},
-  {q:"Ce complexitate are căutarea binară într-un vector sortat?", a:["O(1)","O(log n)","O(n)","O(n²)"], correct:"B", category:"Tehnologie", difficulty:"greu", seconds:30},
-  {q:"Ce protocol este folosit în mod obișnuit pentru transfer securizat de pagini web?", a:["FTP","HTTP","HTTPS","SMTP"], correct:"C", category:"Tehnologie", difficulty:"ușor", seconds:20},
-  {q:"În sistem binar, ce valoare zecimală are 101101?", a:["41","43","45","47"], correct:"C", category:"Tehnologie", difficulty:"greu", seconds:32},
-  {q:"Dacă toate pătratele sunt dreptunghiuri, iar unele dreptunghiuri sunt roșii, rezultă că unele pătrate sunt roșii?", a:["Da, sigur","Nu, nu rezultă neapărat","Doar dacă sunt mari","Doar în geometrie euclidiană"], correct:"B", category:"Logică", difficulty:"expert", seconds:40},
-  {q:"Dacă A este falsă și exact una dintre afirmațiile A și B este adevărată, ce valoare are B?", a:["Adevărată","Falsă","Nedeterminată","Ambele"], correct:"A", category:"Logică", difficulty:"greu", seconds:34},
-  {q:"Un seif are cod de 3 cifre distincte. Prima este dublul ultimei, iar suma cifrelor este 9. Care cod este posibil?", a:["621","531","603","423"], correct:"C", category:"Logică", difficulty:"expert", seconds:45},
-  {q:"Pe o insulă, cavalerii spun mereu adevărul, iar mincinoșii mint mereu. X spune: «Eu și Y suntem de același tip». Dacă X este cavaler, ce este Y?", a:["Cavaler","Mincinos","Nu se poate ști","Ambele"], correct:"A", category:"Logică", difficulty:"greu", seconds:36},
-  {q:"Ai 9 puncte într-o grilă 3×3. Numărul minim clasic de segmente drepte continue pentru a le uni fără a ridica pixul este?", a:["3","4","5","6"], correct:"B", category:"Puzzle", difficulty:"expert", seconds:45},
-  {q:"Un ceas pierde 5 minute la fiecare oră reală. După 12 ore reale, cu câte minute rămâne în urmă?", a:["50","55","60","65"], correct:"C", category:"Logică", difficulty:"greu", seconds:28},
-  {q:"O carte și un pix costă împreună 11 lei. Cartea costă cu 10 lei mai mult decât pixul. Cât costă pixul?", a:["0,50 lei","1 leu","1,50 lei","5 lei"], correct:"A", category:"Logică", difficulty:"greu", seconds:26},
-  {q:"Dacă 4 oameni construiesc 4 ziduri în 4 zile, câte zile le trebuie la 8 oameni să construiască 8 ziduri, la același ritm?", a:["2","4","8","16"], correct:"B", category:"Logică", difficulty:"greu", seconds:28},
-  {q:"Într-o familie sunt doi părinți și șase fii. Fiecare fiu are o soră. Câte persoane sunt minimum în familie?", a:["8","9","10","14"], correct:"B", category:"Logică", difficulty:"greu", seconds:28},
-  {q:"Un număr de două cifre are suma cifrelor 9. Inversând cifrele, numărul crește cu 27. Care este numărul inițial?", a:["27","36","45","54"], correct:"B", category:"Logică", difficulty:"greu", seconds:36},
-  {q:"Care este următorul termen: 2, 12, 36, 80, 150, ?", a:["210","252","270","294"], correct:"B", category:"Logică", difficulty:"expert", seconds:45},
-  {q:"Care este următorul termen: 1, 2, 4, 7, 11, 16, ?", a:["20","21","22","23"], correct:"C", category:"Logică", difficulty:"greu", seconds:28},
-  {q:"Care număr lipsește: 7, 14, 28, 56, ?, 224", a:["84","96","112","128"], correct:"C", category:"Logică", difficulty:"ușor", seconds:20},
-  {q:"Dacă un cub este vopsit pe toate fețele și apoi tăiat în 27 de cuburi egale, câte cubulețe au exact două fețe vopsite?", a:["8","12","16","24"], correct:"B", category:"Logică", difficulty:"expert", seconds:45},
+  {
+    "q": "HARTA 1: Ce țară reprezintă silueta?",
+    "a": [
+      "Spania",
+      "Italia",
+      "Croația",
+      "Grecia"
+    ],
+    "correct": "B",
+    "category": "Hărți",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/map-ita.svg"
+  },
+  {
+    "q": "În ce mare se află insula Sicilia, la sudul țării reprezentate?",
+    "a": [
+      "Marea Baltică",
+      "Marea Mediterană",
+      "Marea Nordului",
+      "Marea Roșie"
+    ],
+    "correct": "B",
+    "category": "Geografie vizuală",
+    "difficulty": "greu",
+    "seconds": 32,
+    "visual": "/visuals/map-ita.svg"
+  },
+  {
+    "q": "HARTA 2: Ce țară reprezintă silueta?",
+    "a": [
+      "Indonezia",
+      "Japonia",
+      "Filipine",
+      "Taiwan"
+    ],
+    "correct": "B",
+    "category": "Hărți",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/map-jpn.svg"
+  },
+  {
+    "q": "Ce ocean se află la est de arhipelagul ilustrat?",
+    "a": [
+      "Atlantic",
+      "Pacific",
+      "Indian",
+      "Arctic"
+    ],
+    "correct": "B",
+    "category": "Geografie vizuală",
+    "difficulty": "greu",
+    "seconds": 32,
+    "visual": "/visuals/map-jpn.svg"
+  },
+  {
+    "q": "HARTA 3: Ce țară reprezintă silueta?",
+    "a": [
+      "Peru",
+      "Argentina",
+      "Chile",
+      "Ecuador"
+    ],
+    "correct": "C",
+    "category": "Hărți",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/map-chl.svg"
+  },
+  {
+    "q": "Ce lanț montan mărginește estul acestei țări?",
+    "a": [
+      "Alpii",
+      "Anzii",
+      "Uralii",
+      "Himalaya"
+    ],
+    "correct": "B",
+    "category": "Geografie vizuală",
+    "difficulty": "greu",
+    "seconds": 32,
+    "visual": "/visuals/map-chl.svg"
+  },
+  {
+    "q": "HARTA 4: Ce țară reprezintă silueta?",
+    "a": [
+      "Finlanda",
+      "Suedia",
+      "Norvegia",
+      "Danemarca"
+    ],
+    "correct": "C",
+    "category": "Hărți",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/map-nor.svg"
+  },
+  {
+    "q": "Ce mare se află la vest de această țară?",
+    "a": [
+      "Marea Norvegiei",
+      "Marea Neagră",
+      "Marea Caspică",
+      "Marea Japoniei"
+    ],
+    "correct": "A",
+    "category": "Geografie vizuală",
+    "difficulty": "greu",
+    "seconds": 32,
+    "visual": "/visuals/map-nor.svg"
+  },
+  {
+    "q": "HARTA 5: Ce țară reprezintă silueta?",
+    "a": [
+      "Argentina",
+      "Brazilia",
+      "Columbia",
+      "Bolivia"
+    ],
+    "correct": "B",
+    "category": "Hărți",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/map-bra.svg"
+  },
+  {
+    "q": "Ce fluviu străbate nordul țării reprezentate?",
+    "a": [
+      "Nilul",
+      "Mississippi",
+      "Amazonul",
+      "Mekong"
+    ],
+    "correct": "C",
+    "category": "Geografie vizuală",
+    "difficulty": "greu",
+    "seconds": 32,
+    "visual": "/visuals/map-bra.svg"
+  },
+  {
+    "q": "HARTA 6: Ce țară reprezintă silueta?",
+    "a": [
+      "Australia",
+      "Groenlanda",
+      "Noua Zeelandă",
+      "Madagascar"
+    ],
+    "correct": "A",
+    "category": "Hărți",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/map-aus.svg"
+  },
+  {
+    "q": "În ce emisferă se află cea mai mare parte a acestei țări?",
+    "a": [
+      "Nordică",
+      "Sudică",
+      "În ambele în mod egal",
+      "La Polul Nord"
+    ],
+    "correct": "B",
+    "category": "Geografie vizuală",
+    "difficulty": "greu",
+    "seconds": 32,
+    "visual": "/visuals/map-aus.svg"
+  },
+  {
+    "q": "HARTA 7: Ce țară reprezintă silueta?",
+    "a": [
+      "Sri Lanka",
+      "Cuba",
+      "Madagascar",
+      "Islanda"
+    ],
+    "correct": "C",
+    "category": "Hărți",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/map-mdg.svg"
+  },
+  {
+    "q": "Lângă coasta cărui continent se află această insulă?",
+    "a": [
+      "Asia",
+      "Europa",
+      "Africa",
+      "America de Sud"
+    ],
+    "correct": "C",
+    "category": "Geografie vizuală",
+    "difficulty": "greu",
+    "seconds": 32,
+    "visual": "/visuals/map-mdg.svg"
+  },
+  {
+    "q": "HARTA 8: Ce țară reprezintă silueta?",
+    "a": [
+      "Pakistan",
+      "Myanmar",
+      "India",
+      "Nepal"
+    ],
+    "correct": "C",
+    "category": "Hărți",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/map-ind.svg"
+  },
+  {
+    "q": "Care golf se află la est de țara ilustrată?",
+    "a": [
+      "Golful Bengal",
+      "Golful Biscaya",
+      "Golful Persic",
+      "Golful Mexic"
+    ],
+    "correct": "A",
+    "category": "Geografie vizuală",
+    "difficulty": "greu",
+    "seconds": 32,
+    "visual": "/visuals/map-ind.svg"
+  },
+  {
+    "q": "Ce oră indică ceasul din imagine?",
+    "a": [
+      "12:20",
+      "04:00",
+      "03:15",
+      "06:00"
+    ],
+    "correct": "B",
+    "category": "Timp și logică",
+    "difficulty": "ușor",
+    "seconds": 24,
+    "visual": "/visuals/clock.svg"
+  },
+  {
+    "q": "Care este unghiul dintre limbile ceasului?",
+    "a": [
+      "90°",
+      "120°",
+      "150°",
+      "180°"
+    ],
+    "correct": "B",
+    "category": "Geometrie vizuală",
+    "difficulty": "greu",
+    "seconds": 36,
+    "visual": "/visuals/clock.svg"
+  },
+  {
+    "q": "Care literă arată Luna plină?",
+    "a": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "correct": "D",
+    "category": "Astronomie vizuală",
+    "difficulty": "ușor",
+    "seconds": 22,
+    "visual": "/visuals/moon.svg"
+  },
+  {
+    "q": "Care literă reprezintă Luna nouă?",
+    "a": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "correct": "A",
+    "category": "Astronomie vizuală",
+    "difficulty": "mediu",
+    "seconds": 26,
+    "visual": "/visuals/moon.svg"
+  },
+  {
+    "q": "Ce planetă e reprezentată cu albastru, pe a treia orbită?",
+    "a": [
+      "Marte",
+      "Venus",
+      "Pământ",
+      "Neptun"
+    ],
+    "correct": "C",
+    "category": "Spațiu vizual",
+    "difficulty": "ușor",
+    "seconds": 24,
+    "visual": "/visuals/solar.svg"
+  },
+  {
+    "q": "Ce planetă este cea mai apropiată de Soare dintre cele reprezentate?",
+    "a": [
+      "Mercur",
+      "Venus",
+      "Pământ",
+      "Marte"
+    ],
+    "correct": "A",
+    "category": "Spațiu vizual",
+    "difficulty": "mediu",
+    "seconds": 26,
+    "visual": "/visuals/solar.svg"
+  },
+  {
+    "q": "Cât măsoară ipotenuza triunghiului dreptunghic?",
+    "a": [
+      "4 cm",
+      "5 cm",
+      "6 cm",
+      "7 cm"
+    ],
+    "correct": "B",
+    "category": "Geometrie vizuală",
+    "difficulty": "ușor",
+    "seconds": 25,
+    "visual": "/visuals/triangle.svg"
+  },
+  {
+    "q": "Ce arie are triunghiul dreptunghic desenat?",
+    "a": [
+      "6 cm²",
+      "8 cm²",
+      "10 cm²",
+      "12 cm²"
+    ],
+    "correct": "A",
+    "category": "Geometrie vizuală",
+    "difficulty": "greu",
+    "seconds": 35,
+    "visual": "/visuals/triangle.svg"
+  },
+  {
+    "q": "Câte vârfuri are corpul geometric ilustrat?",
+    "a": [
+      "6",
+      "8",
+      "10",
+      "12"
+    ],
+    "correct": "B",
+    "category": "Forme 3D",
+    "difficulty": "mediu",
+    "seconds": 27,
+    "visual": "/visuals/cube.svg"
+  },
+  {
+    "q": "Câte muchii are un cub?",
+    "a": [
+      "8",
+      "10",
+      "12",
+      "16"
+    ],
+    "correct": "C",
+    "category": "Forme 3D",
+    "difficulty": "greu",
+    "seconds": 32,
+    "visual": "/visuals/cube.svg"
+  },
+  {
+    "q": "Care coloană din grafic este cea mai înaltă?",
+    "a": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "correct": "C",
+    "category": "Interpretare grafice",
+    "difficulty": "ușor",
+    "seconds": 22,
+    "visual": "/visuals/chart.svg"
+  },
+  {
+    "q": "Care coloană din grafic este a doua ca înălțime?",
+    "a": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "correct": "B",
+    "category": "Interpretare grafice",
+    "difficulty": "mediu",
+    "seconds": 25,
+    "visual": "/visuals/chart.svg"
+  },
+  {
+    "q": "Ce compus chimic este reprezentat?",
+    "a": [
+      "Dioxid de carbon",
+      "Apă",
+      "Metan",
+      "Amoniac"
+    ],
+    "correct": "B",
+    "category": "Chimie vizuală",
+    "difficulty": "ușor",
+    "seconds": 24,
+    "visual": "/visuals/water.svg"
+  },
+  {
+    "q": "Câți atomi are, în total, molecula ilustrată?",
+    "a": [
+      "2",
+      "3",
+      "4",
+      "5"
+    ],
+    "correct": "B",
+    "category": "Chimie vizuală",
+    "difficulty": "mediu",
+    "seconds": 27,
+    "visual": "/visuals/water.svg"
+  },
+  {
+    "q": "Ce componentă este desenată în dreapta circuitului?",
+    "a": [
+      "Un rezistor",
+      "Un bec",
+      "Un condensator",
+      "Un motor"
+    ],
+    "correct": "B",
+    "category": "Fizică vizuală",
+    "difficulty": "mediu",
+    "seconds": 30,
+    "visual": "/visuals/circuit.svg"
+  },
+  {
+    "q": "Ce fel de circuit electric este ilustrat?",
+    "a": [
+      "Circuit deschis",
+      "În serie, o singură buclă",
+      "Circuit trifazat",
+      "Numai în paralel"
+    ],
+    "correct": "B",
+    "category": "Fizică vizuală",
+    "difficulty": "greu",
+    "seconds": 34,
+    "visual": "/visuals/circuit.svg"
+  },
+  {
+    "q": "Ce moleculă este reprezentată de dubla spirală?",
+    "a": [
+      "ADN",
+      "Glucoză",
+      "Hemoglobină",
+      "Colesterol"
+    ],
+    "correct": "A",
+    "category": "Biologie vizuală",
+    "difficulty": "ușor",
+    "seconds": 24,
+    "visual": "/visuals/dna.svg"
+  },
+  {
+    "q": "Care pereche de baze este corectă în ADN?",
+    "a": [
+      "A–G",
+      "A–T",
+      "C–T",
+      "G–T"
+    ],
+    "correct": "B",
+    "category": "Biologie vizuală",
+    "difficulty": "greu",
+    "seconds": 34,
+    "visual": "/visuals/dna.svg"
+  },
+  {
+    "q": "Ce punct cardinal reprezintă litera V din imagine?",
+    "a": [
+      "Nord",
+      "Vest",
+      "Est",
+      "Sud"
+    ],
+    "correct": "B",
+    "category": "Orientare",
+    "difficulty": "ușor",
+    "seconds": 23,
+    "visual": "/visuals/compass.svg"
+  },
+  {
+    "q": "Ce direcție se află exact între nord și est?",
+    "a": [
+      "Nord-vest",
+      "Sud-est",
+      "Nord-est",
+      "Sud-vest"
+    ],
+    "correct": "C",
+    "category": "Orientare",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/compass.svg"
+  },
+  {
+    "q": "Cât valorează în baza 10 numărul binar din imagine?",
+    "a": [
+      "43",
+      "44",
+      "45",
+      "46"
+    ],
+    "correct": "C",
+    "category": "Tehnologie vizuală",
+    "difficulty": "greu",
+    "seconds": 38,
+    "visual": "/visuals/binary.svg"
+  },
+  {
+    "q": "Câte cifre de 1 apar în numărul binar desenat?",
+    "a": [
+      "3",
+      "4",
+      "5",
+      "6"
+    ],
+    "correct": "B",
+    "category": "Tehnologie vizuală",
+    "difficulty": "ușor",
+    "seconds": 24,
+    "visual": "/visuals/binary.svg"
+  },
+  {
+    "q": "Cum se numește poligonul din imagine?",
+    "a": [
+      "Pentagon",
+      "Hexagon",
+      "Heptagon",
+      "Octogon"
+    ],
+    "correct": "B",
+    "category": "Geometrie vizuală",
+    "difficulty": "ușor",
+    "seconds": 25,
+    "visual": "/visuals/polygon.svg"
+  },
+  {
+    "q": "În câte triunghiuri împarte hexagonul toate diagonalele trasate dintr-un singur vârf?",
+    "a": [
+      "3",
+      "4",
+      "5",
+      "6"
+    ],
+    "correct": "B",
+    "category": "Geometrie vizuală",
+    "difficulty": "greu",
+    "seconds": 40,
+    "visual": "/visuals/polygon.svg"
+  },
+  {
+    "q": "Ce fenomen este ilustrat de Luna dintre Soare și observator?",
+    "a": [
+      "Eclipsă de Lună",
+      "Eclipsă de Soare",
+      "Solstițiu",
+      "Auroră"
+    ],
+    "correct": "B",
+    "category": "Spațiu vizual",
+    "difficulty": "mediu",
+    "seconds": 30,
+    "visual": "/visuals/eclipse.svg"
+  },
+  {
+    "q": "Care corp ceresc se află între Soare și Pământ în situația ilustrată?",
+    "a": [
+      "Marte",
+      "Venus",
+      "Luna",
+      "Saturn"
+    ],
+    "correct": "C",
+    "category": "Spațiu vizual",
+    "difficulty": "ușor",
+    "seconds": 24,
+    "visual": "/visuals/eclipse.svg"
+  },
+  {
+    "q": "Ce țară are drapelul din imagine?",
+    "a": [
+      "Finlanda",
+      "Estonia",
+      "Grecia",
+      "Suedia"
+    ],
+    "correct": "A",
+    "category": "Steaguri",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/flags.svg"
+  },
+  {
+    "q": "Ce tip de cruce apare pe drapelul ilustrat?",
+    "a": [
+      "Cruce latină centrată",
+      "Cruce nordică",
+      "Cruce malteză",
+      "Cruce diagonală"
+    ],
+    "correct": "B",
+    "category": "Steaguri",
+    "difficulty": "greu",
+    "seconds": 32,
+    "visual": "/visuals/flags.svg"
+  },
+  {
+    "q": "Într-un angrenaj ca în imagine, care roată se rotește mai repede?",
+    "a": [
+      "Cea mare",
+      "Cea mică",
+      "La fel",
+      "Niciuna"
+    ],
+    "correct": "B",
+    "category": "Fizică vizuală",
+    "difficulty": "greu",
+    "seconds": 34,
+    "visual": "/visuals/gears.svg"
+  },
+  {
+    "q": "Cele două roți dințate care se angrenează direct se învârt…",
+    "a": [
+      "În același sens",
+      "În sensuri opuse",
+      "Numai în sus",
+      "Numai la același diametru"
+    ],
+    "correct": "B",
+    "category": "Logică vizuală",
+    "difficulty": "mediu",
+    "seconds": 28,
+    "visual": "/visuals/gears.svg"
+  }
 ];
